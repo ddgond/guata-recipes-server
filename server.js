@@ -2,6 +2,7 @@ import chalk from 'chalk';
 import { MongoClient } from 'mongodb';
 import express from 'express';
 import bodyParser from "body-parser";
+import slowDown from 'express-slow-down'
 
 const mongoClient = new MongoClient('mongodb+srv://admin:CKLBIE1mIJBzcgAj@cooking0.xmym8.mongodb.net/?retryWrites=true&w=majority');
 const dbName = 'database';
@@ -202,11 +203,19 @@ mongoClient.connect().then(() => {
 const app = express();
 const port = 8000;
 
+app.enable("trust proxy"); // only if you're behind a reverse proxy (Heroku, Bluemix, AWS if you use an ELB, custom Nginx setup, etc)
+
+const speedLimiter = slowDown({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  delayAfter: 100, // allow 100 requests per 15 minutes, then...
+  delayMs: 500 // begin adding 500ms of delay per request above 100:
+});
+
 app.get('/api', (req, res) => {
   res.send(recipeBook);
 });
 
-app.delete('/api/recipe/*', bodyParser.json(), (req, res) => {
+app.delete('/api/recipe/*', speedLimiter, bodyParser.json(), (req, res) => {
   const name = req.params[0];
   if (req.body.password !== 'correcthorse') {
     setTimeout(() => {
@@ -223,7 +232,7 @@ app.delete('/api/recipe/*', bodyParser.json(), (req, res) => {
   })
 })
 
-app.post('/api/recipe', bodyParser.json(), (req, res) => {
+app.post('/api/recipe', speedLimiter, bodyParser.json(), (req, res) => {
   const recipeData = req.body;
   if (recipeData.password !== 'correcthorse') {
     setTimeout(() => {

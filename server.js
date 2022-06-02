@@ -30,10 +30,10 @@ class Ingredient {
   }
   static fromJSON(json) {
     if (!json.entry || typeof json.entry != 'string' || json.entry.length < 1) {
-      throw 'Invalid JSON';
+      throw 'Invalid JSON.';
     }
     if (!json.keywords || json.keywords.some(keyword => typeof keyword != 'string' || keyword.length < 1)) {
-      throw 'Invalid JSON';
+      throw 'Invalid JSON.';
     }
     return new Ingredient(json.entry, json.keywords);
   }
@@ -55,7 +55,7 @@ class Step {
   }
   static fromJSON(json) {
     if (!json.text || typeof json.text != 'string' || json.text.length < 1) {
-      throw 'Invalid JSON';
+      throw 'Invalid JSON.';
     }
     return new Step(json.text);
   }
@@ -85,19 +85,19 @@ class Recipe {
 
   static fromJSON(json) {
     if (!json.name || !json.description || !json.tags || !json.serves || !json.ingredients || !json.steps) {
-      throw 'Invalid JSON';
+      throw 'Invalid JSON.';
     }
-    if (typeof json.name != 'string' || typeof json.description != 'string' || typeof json.serves != 'number') {
-      throw 'Invalid JSON';
+    if (typeof json.name != 'string' || typeof json.description != 'string' || typeof json.serves != 'string') {
+      throw 'Invalid JSON.';
     }
     if (json.name.length < 1 || json.description.length < 1 || json.serves < 1) {
-      throw 'Invalid JSON';
+      throw 'Invalid JSON.';
     }
     if (json.ingredients.length < 1 || json.steps.length < 1 || json.tags.length < 1) {
-      throw 'Invalid JSON';
+      throw 'Invalid JSON.';
     }
     if (json.tags.some(tag => typeof tag != 'string' || tag.length < 1)) {
-      throw 'Invalid JSON';
+      throw 'Invalid JSON.';
     }
     const ingredients = json.ingredients.map(ingredient => Ingredient.fromJSON(ingredient));
     const steps = json.steps.map(step => Step.fromJSON(step));
@@ -113,6 +113,15 @@ class RecipeBook {
 
   add(recipe) {
     this.recipes.push(recipe);
+  }
+
+  replaceRecipe(recipe, previousName) {
+    this.deleteRecipe(previousName);
+    this.add(recipe);
+  }
+
+  deleteRecipe(recipeName) {
+    this.recipes.splice(this.recipes.findIndex(recipe => recipe.name === recipeName), 1);
   }
 
   toString() {
@@ -139,6 +148,30 @@ const uploadRecipe = (recipe) => {
   });
 }
 
+const replaceRecipe = (recipe, previousName) => {
+  console.log('Preparing to replace recipe.');
+  const db = mongoClient.db(dbName);
+  const recipesCollection = db.collection(recipesCollectionName);
+  const filter = {
+    name: previousName
+  };
+  return recipesCollection.replaceOne(filter, recipe).then(() => {
+    console.log('Done replacing recipe.');
+  });
+}
+
+const deleteRecipe = (recipeName) => {
+  console.log('Preparing to delete recipe.');
+  const db = mongoClient.db(dbName);
+  const recipesCollection = db.collection(recipesCollectionName);
+  const filter = {
+    name: recipeName
+  };
+  return recipesCollection.deleteOne(filter).then(() => {
+    console.log('Done deleting recipe.');
+  })
+}
+
 const updateRecipes = () => {
   console.log('Updating recipe book...');
   const db = mongoClient.db(dbName);
@@ -154,12 +187,15 @@ const updateRecipes = () => {
   });
 }
 
+console.log('Connecting to mongoDB...');
 mongoClient.connect().then(() => {
+  console.log('Connected to mongoDB.');
   updateRecipes();
   setInterval(() => {
     updateRecipes();
   }, 30000);
 }).catch(err => {
+  console.error('Failed to connect to mongoDB.');
   console.error(err);
 });
 
@@ -170,21 +206,55 @@ app.get('/api', (req, res) => {
   res.send(recipeBook);
 });
 
+app.delete('/api/recipe/*', bodyParser.json(), (req, res) => {
+  const name = req.params[0];
+  if (req.body.password !== 'correcthorse') {
+    setTimeout(() => {
+      console.log('Attempted DELETE with incorrect password denied.');
+      res.status(401).send('Incorrect password.');
+    }, 1000);
+    return;
+  }
+  deleteRecipe(name).then(() => {
+    recipeBook.deleteRecipe(name);
+    res.json(name);
+  }).catch(err => {
+    res.status(500).send('Failed to delete recipe in database.');
+  })
+})
+
 app.post('/api/recipe', bodyParser.json(), (req, res) => {
   const recipeData = req.body;
+  if (recipeData.password !== 'correcthorse') {
+    setTimeout(() => {
+      console.log('Attempted POST with incorrect password denied.');
+      res.status(401).send('Incorrect password.');
+    }, 1000);
+    return;
+  }
   try {
     const newRecipe = Recipe.fromJSON(recipeData);
-    if (recipeBook.recipes.some(recipe => recipe.name === newRecipe.name)) {
-      res.status(400).send(`Recipe with name '${newRecipe.name}' already exists.`);
+    if (recipeBook.recipes.some(recipe => recipe.name === newRecipe.name) && !(recipeData.edit && newRecipe.name === recipeData.previousName)) {
+        res.status(400).send(`Recipe with name '${newRecipe.name}' already exists.`);
     } else {
-      recipeBook.add(newRecipe);
-      uploadRecipe(newRecipe).then(() => {
-        res.json(newRecipe);
-      }).catch(err => {
-        res.status(500).send('Failed to store recipe in database.');
-      });
+      if (recipeData.edit) {
+        replaceRecipe(newRecipe, recipeData.previousName).then(() => {
+          recipeBook.replaceRecipe(newRecipe, recipeData.previousName);
+          res.json(newRecipe);
+        }).catch(err => {
+          res.status(500).send('Failed to update recipe in database.');
+        })
+      } else {
+        uploadRecipe(newRecipe).then(() => {
+          recipeBook.add(newRecipe);
+          res.json(newRecipe);
+        }).catch(err => {
+          res.status(500).send('Failed to store recipe in database.');
+        });
+      }
     }
   } catch (e) {
+    console.error(e);
     res.status(400).send(e);
   }
 })

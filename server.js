@@ -41,8 +41,9 @@ class Ingredient {
 }
 
 class Step {
-  constructor(text) {
+  constructor(text, isHeading) {
     this.text = text;
+    this.isHeading = isHeading;
   }
   toString() {
     return this.text;
@@ -55,10 +56,10 @@ class Step {
     return recursiveHighlight(this.toString(), keywords);
   }
   static fromJSON(json) {
-    if (!json.text || typeof json.text != 'string' || json.text.length < 1) {
+    if (!json.text || typeof json.text != 'string' || json.text.length < 1 || typeof json.isHeading != 'boolean') {
       throw 'Invalid JSON.';
     }
-    return new Step(json.text);
+    return new Step(json.text, json.isHeading);
   }
 }
 
@@ -177,7 +178,7 @@ const updateRecipes = () => {
   console.log('Updating recipe book...');
   const db = mongoClient.db(dbName);
   const recipesCollection = db.collection(recipesCollectionName);
-  recipesCollection.find({}).toArray().then(recipesData => {
+  return recipesCollection.find({}).toArray().then(recipesData => {
     recipeBook.clear();
     recipesData.forEach(recipeData => {
       recipeBook.add(Recipe.fromJSON(recipeData));
@@ -188,10 +189,24 @@ const updateRecipes = () => {
   });
 }
 
+const updatingDbRecipes = false; // Set to true ONLY when in use
+/**
+ * Used for adding fields to existing recipes.
+ */
+const forceDbRecipeUpdate = () => {
+  recipeBook.recipes.forEach(recipe => {
+    replaceRecipe(recipe, recipe.name);
+  });
+}
+
 console.log('Connecting to mongoDB...');
 mongoClient.connect().then(() => {
   console.log('Connected to mongoDB.');
-  updateRecipes();
+  updateRecipes().then(() => {
+    if (updatingDbRecipes) {
+      forceDbRecipeUpdate();
+    }
+  });
   setInterval(() => {
     updateRecipes();
   }, 30000);

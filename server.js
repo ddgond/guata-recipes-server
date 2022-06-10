@@ -1,10 +1,11 @@
+import 'dotenv/config';
 import chalk from 'chalk';
 import { MongoClient } from 'mongodb';
 import express from 'express';
 import bodyParser from "body-parser";
-import slowDown from 'express-slow-down'
+import slowDown from 'express-slow-down';
 
-const mongoClient = new MongoClient('mongodb+srv://admin:CKLBIE1mIJBzcgAj@cooking0.xmym8.mongodb.net/?retryWrites=true&w=majority');
+const mongoClient = new MongoClient(process.env.MONGO_URL);
 const dbName = 'database';
 const recipesCollectionName = 'recipes';
 
@@ -232,7 +233,7 @@ app.get('/api', (req, res) => {
 
 app.delete('/api/recipe/*', speedLimiter, bodyParser.json(), (req, res) => {
   const name = req.params[0];
-  if (req.body.password !== 'correcthorse') {
+  if (req.body.password !== process.env.PASSWORD) {
     setTimeout(() => {
       console.log('Attempted DELETE with incorrect password denied.');
       res.status(401).send('Incorrect password.');
@@ -249,7 +250,7 @@ app.delete('/api/recipe/*', speedLimiter, bodyParser.json(), (req, res) => {
 
 app.post('/api/recipe', speedLimiter, bodyParser.json(), (req, res) => {
   const recipeData = req.body;
-  if (recipeData.password !== 'correcthorse') {
+  if (recipeData.password !== process.env.PASSWORD) {
     setTimeout(() => {
       console.log('Attempted POST with incorrect password denied.');
       res.status(401).send('Incorrect password.');

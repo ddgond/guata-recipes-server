@@ -6,8 +6,8 @@ import bodyParser from "body-parser";
 import slowDown from 'express-slow-down';
 
 const mongoClient = new MongoClient(process.env.MONGO_URL);
-const dbName = 'database';
-const recipesCollectionName = 'recipes';
+const dbName = process.env.DB_NAME;
+const recipesCollectionName = process.env.RECIPES_COLLECTION_NAME;
 
 const recursiveHighlight = (phrase, keywords) => {
   if (keywords.length === 0) {

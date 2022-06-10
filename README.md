@@ -1,3 +1,5 @@
+Example at https://recipes.guata.me
+
 Before running, create a `.env` file in the root of this directory with the following contents:
 
 ```

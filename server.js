@@ -143,40 +143,30 @@ class RecipeBook {
 const recipeBook = new RecipeBook();
 
 const uploadRecipe = (recipe) => {
-  console.log('Preparing to upload new recipe.');
   const db = mongoClient.db(dbName);
   const recipesCollection = db.collection(recipesCollectionName);
-  return recipesCollection.insertOne(recipe).then(() => {
-    console.log('Done uploading new recipe.');
-  });
+  return recipesCollection.insertOne(recipe).then(() => {});
 }
 
 const replaceRecipe = (recipe, previousName) => {
-  console.log('Preparing to replace recipe.');
   const db = mongoClient.db(dbName);
   const recipesCollection = db.collection(recipesCollectionName);
   const filter = {
     name: previousName
   };
-  return recipesCollection.replaceOne(filter, recipe).then(() => {
-    console.log('Done replacing recipe.');
-  });
+  return recipesCollection.replaceOne(filter, recipe).then(() => {});
 }
 
 const deleteRecipe = (recipeName) => {
-  console.log('Preparing to delete recipe.');
   const db = mongoClient.db(dbName);
   const recipesCollection = db.collection(recipesCollectionName);
   const filter = {
     name: recipeName
   };
-  return recipesCollection.deleteOne(filter).then(() => {
-    console.log('Done deleting recipe.');
-  })
+  return recipesCollection.deleteOne(filter).then(() => {})
 }
 
 const updateRecipes = () => {
-  console.log('Updating recipe book...');
   const db = mongoClient.db(dbName);
   const recipesCollection = db.collection(recipesCollectionName);
   return recipesCollection.find({}).toArray().then(recipesData => {
@@ -184,7 +174,6 @@ const updateRecipes = () => {
     recipesData.forEach(recipeData => {
       recipeBook.add(Recipe.fromJSON(recipeData));
     });
-    console.log(`Done updating recipes! ${recipeBook.recipes.length} recipes loaded!`);
   }).catch(err=>{
     console.error(err);
   });

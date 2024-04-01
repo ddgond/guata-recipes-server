@@ -7,6 +7,7 @@ MONGO_URL="[mongodb connection url (usually starts with 'mongodb://' or 'mongodb
 DB_NAME="[mongodb database name]"
 RECIPES_COLLECTION_NAME="[mongodb collection name within DB_NAME]"
 PASSWORD="[auth password for api requests]"
+PORT=[port number]
 ```
 
 Run the server with `npm start`.
